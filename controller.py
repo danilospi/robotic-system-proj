@@ -157,7 +157,7 @@ class SpeedProfileGenerator2D:
         self.vp = 0  # current POSTIVE speed
         self.phase = SpeedProfileGenerator.ACCEL
 
-    def evaluate(self, delta_t, current_pos):
+    def evaluate(self, delta_t, current_pos, angle_constraint):
         dx = self.p_target[0] - current_pos[0]
         dy = self.p_target[1] - current_pos[1]
 
@@ -173,7 +173,7 @@ class SpeedProfileGenerator2D:
         else:
             heading_error = normalize_angle(self.target_heading - current_pos[2])
             
-            if abs(heading_error) > math.radians(1):
+            if angle_constraint and abs(heading_error) > math.radians(1):
                 self.v = 0
                 self.vp = 0
             else:

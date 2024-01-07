@@ -38,11 +38,11 @@ class MainWindow(QWidget):
         
         self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, self.path_controller)
 
-        self.left_controller = PID_Sat_Controller(5.0, 3.0, 0.0, saturation)
-        self.right_controller = PID_Sat_Controller(5.0, 3.0, 0.0, saturation)
+        self.left_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
+        self.right_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
         
         self.target = (0.1, 0.1)
-        self.linear_speed_profile_controller = SpeedProfileGenerator2D(self.target, 2.0, 5, 5)
+        self.linear_speed_profile_controller = SpeedProfileGenerator2D(self.target, 2.0, 2, 2)
         self.angular_speed_profile_controller = SpeedProfileGenerator(math.radians(90), 2, 10, 10)
 
         self.painter = CartTwoWheelsPainter(self.robot_two_wheels)
@@ -78,7 +78,7 @@ class MainWindow(QWidget):
         
     def go(self):
         #Prendo la velocità dal Distance Control
-        v_target = self.linear_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose())
+        v_target = self.linear_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose(), True)
         self.angular_speed_profile_controller.set_target(self.linear_speed_profile_controller.target_heading)
         
         #Prendo la velocità angolare dal Distance Control
