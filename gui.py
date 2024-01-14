@@ -32,7 +32,7 @@ class MainWindow(QWidget):
         mass = 20 #Kg
         radius = 0.15 #m
         friction = 7e-5
-        saturation = 150 #N
+        saturation = 130 #N
         
         self.path_controller = Path2D(2.0, 2, 2, 0.01)
         
