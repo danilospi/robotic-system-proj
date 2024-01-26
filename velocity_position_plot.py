@@ -3,7 +3,7 @@ import sys
 import math
 import pathlib
 from cart import TwoWheelsCart2DEncodersOdometry
-from controller import PID_Sat_Controller, Path2D, SpeedProfileGenerator, SpeedProfileGenerator2D
+from controller import PID_Sat_Controller, SpeedProfileGenerator, SpeedProfileGenerator2D
 from plot import DataPlotter
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt
@@ -22,9 +22,7 @@ class VelocityPositionPlot(RoboticSystem):
         friction = 7e-5
         saturation = 130 #N
         
-        self.path_controller = Path2D(2.0, 2, 2, 0.01)
-        
-        self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, self.path_controller)
+        self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, None)
 
         self.plotter = DataPlotter()
         self.left_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)

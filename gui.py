@@ -34,9 +34,7 @@ class MainWindow(QWidget):
         friction = 7e-5
         saturation = 130 #N
         
-        self.path_controller = Path2D(2.0, 2, 2, 0.01)
-        
-        self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, self.path_controller)
+        self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, None)
 
         self.left_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
         self.right_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
@@ -81,7 +79,7 @@ class MainWindow(QWidget):
         v_target = self.linear_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose(), True)
         self.angular_speed_profile_controller.set_target(self.linear_speed_profile_controller.target_heading)
         
-        #Prendo la velocità angolare dal Distance Control
+        #Prendo la velocità angolare dal Rotation Control
         w_target = self.angular_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose()[2])
         (vl, vr) = self.robot_two_wheels.get_wheel_speed()
         vref_l = v_target - w_target * self.robot_two_wheels.encoder_wheelbase / 2.0
