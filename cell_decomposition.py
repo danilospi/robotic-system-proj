@@ -22,7 +22,7 @@ class CellDecomposition:
         
         boundary = [pointA, pointB, pointD, pointC]
         
-        #sort by x-values
+        #Ordino le coppie di coordinate che compongono gli ostacoli per x
         sorted_vertices = []
         for index,i in enumerate(self.obstacles):
             for j in i:
@@ -45,8 +45,7 @@ class CellDecomposition:
             new_obstacles.append(temp_obs)	
 
 
-        #-----------------------------------------------------------
-        # Find vertical lines
+        #Per prima cosa cerco tutte le linee verticali che serviranno a disegnare le celle
         open_line_segments = []
 
         y_limit_lower = 50
@@ -61,10 +60,8 @@ class CellDecomposition:
             lower_gone = False
             break_now = False
 
-            # Find intersection points with the vertical proposed lines. the intersection function returns false if segments are same, so no need to worry about same segment checking
+            #Vado ad individuare i punti di intersezione tra le linee verticali e gli ostacoli
             for index,obs in enumerate(new_obstacles):
-                # Add the first point again for the last line segment of a polygon.
-                
                 obs.append( obs[0] )
                 for vertex_index in range(len(obs)-1 ):
                     res = segment_intersection( curr_line_segment[0], curr_line_segment[1], obs[vertex_index],  obs[vertex_index+1])
@@ -86,22 +83,17 @@ class CellDecomposition:
                     if( upper_gone is True and lower_gone is True ):
                         break_now = True
 
-                #No need to check for current point anymore...completely blocked
                 if(break_now is True):
                     break		
 
-            # Draw the vertical cell lines
+            # Aggiungo le linee verticali trovate nella lista return_vertical_lines[] per poterle disegnare
             if(lower_gone is False):
                 return_vertical_lines.append((lower_obs_pt.x, lower_obs_pt.y, pt.x, pt.y))
-                #qp.drawLine( lower_obs_pt.x, pt.x,  lower_obs_pt.y, pt.y )
-                #qp.drawLine(lower_obs_pt.x, lower_obs_pt.y, pt.x, pt.y)
                 
             if(upper_gone is False):
                 return_vertical_lines.append((pt.x, pt.y, upper_obs_pt.x, upper_obs_pt.y))
-                #qp.drawLine( pt.x, upper_obs_pt.x,  pt.y, upper_obs_pt.y )
-                #qp.drawLine(pt.x, pt.y, upper_obs_pt.x, upper_obs_pt.y)
 
-            # Add to the global segment list
+            # Aggiungo le linee verticali trovate nella lista open_line_segments[] che servirà successivamente
             if (lower_gone and upper_gone):
                 open_line_segments.append([None, None])
             elif (lower_gone):
@@ -111,10 +103,8 @@ class CellDecomposition:
             else:
                 open_line_segments.append([lower_obs_pt, upper_obs_pt])
                 
-        #------------------------------------------------------
-        # Find Polygon cells naiively. Will improve next. 
+        # Dopo aver trovato le linee verticali cerco di trovare i poligoni che compongono le celle
         cells = []
-
         for index1 in range(len(open_line_segments) ):
             curr_segment = open_line_segments[index1]
             curr_vertex = new_sorted_vertices[index1]
@@ -131,8 +121,6 @@ class CellDecomposition:
                 next_segment = open_line_segments[index2]
                 next_vertex = new_sorted_vertices[index2]			
                 
-                double_index1 = -2
-                double_index2 = -2
                 lines_to_check = []
                 trapezoids = []
                 double_check = False
@@ -142,7 +130,6 @@ class CellDecomposition:
 
                 if( done[0] is False ):
                     if( double_check ):
-                        double_index1 = len(lines_to_check)
                         lines_to_check.append( [centroid([curr_segment[0], curr_vertex]), centroid([next_segment[0], next_vertex]), 0])
                         lines_to_check.append( [centroid([curr_segment[0], curr_vertex]), centroid([next_segment[1], next_vertex]), 0])
                         trapezoids.append([ curr_segment[0], next_segment[0], next_vertex, curr_vertex ])
@@ -159,7 +146,6 @@ class CellDecomposition:
 
                 if( done[1] is False ):
                     if( double_check ):
-                        double_index2 = len(lines_to_check)
                         lines_to_check.append( [centroid([curr_segment[1], curr_vertex]), centroid([next_segment[0], next_vertex]), 1])
                         lines_to_check.append( [centroid([curr_segment[1], curr_vertex]), centroid([next_segment[1], next_vertex]), 1])
                         trapezoids.append([ curr_vertex, next_segment[0], next_vertex , point(curr_segment[1].x, curr_segment[1].y,curr_segment[1].obstacle, 34)])
@@ -187,7 +173,6 @@ class CellDecomposition:
                     elif( next_segment[1] is not None ):
                         lines_to_check.append( [curr_vertex, centroid([next_segment[1], next_vertex]), 2])
                         trapezoids.append([ curr_vertex, next_vertex, next_segment[1] ])
-                    # Will this ever occur though??
                     else:
                         lines_to_check.append( [curr_vertex, next_vertex, 2])
                         trapezoids.append([curr_vertex, next_vertex])
@@ -196,7 +181,6 @@ class CellDecomposition:
                 for index5,q in enumerate(lines_to_check): 
                     ok = [True, True, True]
                     for index3,obs in enumerate(new_obstacles):
-                        # Add the last line to make closed polygon
                         obs.append( obs[0] )
                         for index4 in range(len(obs)-1):
                             if (segment_intersection( q[0], q[1],  obs[index4],  obs[index4+1]) != -1):
@@ -214,18 +198,9 @@ class CellDecomposition:
                 
                 if( done[0] == True and done[1] == True and done[2] == True ):
                     break
-
-        to_draw =[]
-        for i in cells:
-            i.append(i[0])
-            to_draw.append(i)
                 
-        
-        #-------------------------------------------------------
-        # Merge overlapping Polygons
+        #Successivamente faccio il merge dei poligoni che si sovrappongono
         quad_cells = [i for i in cells if len(i)>3]
-        tri_cells = [i for i in cells if len(i)==3]
-        others = [i for i in cells if len(i)<3]
         quads_to_remove = []
         quads_to_add = []
 
@@ -239,7 +214,8 @@ class CellDecomposition:
                             temp1.append(temp1[0])
                             temp2 = list(cell)
                             temp2.append(temp2[0])
-                            area1 = polygon_area(temp1,4); area2 = polygon_area(temp2,4)
+                            area1 = polygon_area(temp1,4)
+                            area2 = polygon_area(temp2,4)
                             new_quad=[]
                             
                             new_quad.append( point(temp1[0].x, min(temp1[0].y, temp2[0].y)) )
@@ -249,7 +225,6 @@ class CellDecomposition:
                             new_quad.append( point(temp1[0].x, min(temp1[0].y, temp2[0].y)) )
                             area3 = polygon_area(new_quad, 4)
                             if( area1 + area2 >= area3):
-                                #merge
                                 quads_to_remove.append(index_cell)
                                 quads_to_remove.append(index_cell2)
                                 
@@ -262,7 +237,7 @@ class CellDecomposition:
         for i in quads_to_add:
             quad_cells.append(i)
 
-        # Remove duplicates
+        # Rimuovo i duplicati
         to_remove = []
         for index1 in range(len(quad_cells)):
             for index2 in range(index1+1, len(quad_cells)):
@@ -278,7 +253,6 @@ class CellDecomposition:
         for index in sorted(to_remove, reverse=True):
             del quad_cells[index]
 
-        # One more pass to remove extra quads generated because of cross - segments
         quads_to_remove = []
         for index1 in range(len(quad_cells)):
             for index2 in range(len(quad_cells)):
@@ -294,19 +268,13 @@ class CellDecomposition:
             del quad_cells[index]
 
 
-        #------------------------------------------------------
-        # Add boundary lines
+        #Aggiungo i poligoni che compongono la cella iniziale e la cella finale
         if( boundary[0].x != new_sorted_vertices[0].x):
             quad_cells.append([boundary[0], point(new_sorted_vertices[0].x, y_limit_lower), point(new_sorted_vertices[0].x, y_limit_upper), boundary[3]])
         if( boundary[1].x != new_sorted_vertices[len(new_sorted_vertices)-1].x):
             quad_cells.append([point(new_sorted_vertices[len(new_sorted_vertices)-1].x ,y_limit_lower), boundary[1], boundary[2], point(new_sorted_vertices[len(new_sorted_vertices)-1].x, y_limit_upper) ])
-            
-        #-------------------------------------------------------
-        # Plot final cells
-        to_draw = quad_cells+tri_cells+others
 
-        #----------------------------------------------------------------------
-        # Get the graph        
+        #Dopo aver suddiviso l'ambiente in celle estraggo la lista dei vertici e degli archi
         graph_vertices = []
         graph_edges = []
 
@@ -361,12 +329,13 @@ class CellDecomposition:
                     graph_edges.append([use, pl1])
                     graph_edges.append([pl1, pl2])
         
-        #Add Cylinder position
+        #Aggiungo le posizioni dei dischi in modo tale che su di essi ci sia un vertice del grafo
         for i in BLOCK_POSITIONS:
             dest_x = (Pose.x_center + i[0] * 1000) + 10
             dest_y = (Pose.y_center - i[1] * 1000) - 10
             dest = point(int(dest_x), int(dest_y))
-            min_ind_dest = -1; minn_dest = 9999999
+            min_ind_dest = -1
+            minn_dest = 9999999
             for index, i in enumerate(graph_vertices):
                 if( check_obstruction(new_obstacles, [dest, i]) is True ):
                     dist = find_dist(i, dest)
@@ -378,7 +347,7 @@ class CellDecomposition:
             m_dest = len(graph_vertices)-1
             graph_edges.append([min_ind_dest, m_dest])
         
-        # Convert graph in adjacency list format
+        # Converto il grafo in una lista di adiacenza
         graph = []
         for j in range(len(graph_vertices)):
             graph.append([])
@@ -388,10 +357,13 @@ class CellDecomposition:
                 elif(i[1]==j):
                     graph[j].append(i[0])
         
+        #Aggiungo i vertici del grafo alla lista return_vertex[]
         for index,i in enumerate(graph_vertices):
             return_vertex.append((int(i.x - self.size/2), int(i.y - self.size/2), self.size, self.size))
-            
+        
+        #Aggiungo gli archi del grafo alla lista return_edges[]
         for i in graph_edges:
             return_edges.append((graph_vertices[i[0]].x, graph_vertices[i[0]].y, graph_vertices[i[1]].x, graph_vertices[i[1]].y))
         
+        #Restituisco le verie liste che ho generato
         return return_vertical_lines, return_vertex, return_edges, graph, graph_vertices

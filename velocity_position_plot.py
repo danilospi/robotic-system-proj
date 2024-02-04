@@ -25,12 +25,12 @@ class VelocityPositionPlot(RoboticSystem):
         self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, None)
 
         self.plotter = DataPlotter()
-        self.left_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
-        self.right_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
+        self.left_controller = PID_Sat_Controller(18.0, 2.0, 0.0, saturation)
+        self.right_controller = PID_Sat_Controller(18.0, 2.0, 0.0, saturation)
         
         self.target = (0.8, 0.0)
         self.linear_speed_profile_controller = SpeedProfileGenerator2D(self.target, 2.0, 2, 2)
-        self.angular_speed_profile_controller = SpeedProfileGenerator(math.radians(90), 2, 10, 10)
+        self.angular_speed_profile_controller = SpeedProfileGenerator(math.radians(90), 2, 2, 2)
         
     def run(self):
         v_target = self.linear_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose(), True)
@@ -53,7 +53,7 @@ class VelocityPositionPlot(RoboticSystem):
         self.plotter.add( 'vref_r', vref_r)
         self.plotter.add('target', 0.8)
         self.plotter.add('position', self.get_pose()[0])
-        if self.t > 3:
+        if self.t > 2:
             self.plotter.plot( ['t', 'time'] , [ [ 'vref_l', 'Vref' ],
                                                  [ 'vl', 'VL' ] ])
             self.plotter.plot( ['t', 'time'] , [ [ 'vref_r', 'Vref' ],

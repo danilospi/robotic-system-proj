@@ -26,7 +26,7 @@ class MainWindow(QWidget):
         self.setWindowTitle('Danilo Spinelli Project')
         self.show()
 
-        self.delta_t = 1e-2  # 10ms of time-tick #put 1e-3
+        self.delta_t = 1e-2  # 10ms of time-tick
         self.t = 0
 
         mass = 20 #Kg
@@ -34,72 +34,99 @@ class MainWindow(QWidget):
         friction = 7e-5
         saturation = 130 #N
         
+        #Inizializzo il robot mobile a due ruote indipenti (all'interno del metodo evalute sono presenti le formule di odometria per convertire lo spostamento in una posa del robot)
         self.robot_two_wheels = TwoWheelsCart2DEncodersOdometry(mass, radius, friction, friction,0.025, 0.025, 0.2, 0.02, 0.02, 0.24, 2 * math.pi / 4000.0, None)
 
-        self.left_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
-        self.right_controller = PID_Sat_Controller(3.1, 0.0, 0.0, saturation)
+        #Inizializzo due controlli proporzionali integrali (uno per ogni ruota)
+        self.left_controller = PID_Sat_Controller(18.0, 2.0, 0.0, saturation)
+        self.right_controller = PID_Sat_Controller(18.0, 2.0, 0.0, saturation)
         
-        self.target = (0.1, 0.1)
+        #Imposto il primo target per il robot (questo mi permette di posizionarlo sopra il vertice più vicino)
+        self.target = (0.0, 0.0)
+        
+        #Inizializzo il Distance control utilizzando un controllo in posizione con profilo di velocità
         self.linear_speed_profile_controller = SpeedProfileGenerator2D(self.target, 2.0, 2, 2)
-        self.angular_speed_profile_controller = SpeedProfileGenerator(math.radians(90), 2, 10, 10)
+        
+        #Inizializzo il Rotation control utilizzando un controllo in posizione con profilo di velocità
+        self.angular_speed_profile_controller = SpeedProfileGenerator(math.radians(90), 2, 2, 2)
 
+        #Inizializzo il Painter che mi permette di disegnare il robot e i suoi parametri
         self.painter = CartTwoWheelsPainter(self.robot_two_wheels)
 
+        #Inizializzo l'oggetto world
         self.world = World(self)
 
+        #Imposto un timer di 10ms che schedula il metodo go()
         self._timer_painter = QtCore.QTimer(self)
         self._timer_painter.timeout.connect(self.go)
         self._timer_painter.start(int(self.delta_t * 1000))
         self.notification = False
 
-        #self._timer_sensor = QtCore.QTimer(self)
-        #self._timer_sensor.timeout.connect(self.send_pos)
-        #self._timer_sensor.start(500)
-
         self._from = None
         
+        #La lista possible_block_list[] contiene tutte le 20 possibili posizioni in cui potrebbero trovarsi i dischi colorati
         self.possible_block_list = []
+        #Questo metodo permette di inizializzare la lista
         self.initialize_block_position_list()
         
+        #La lista all_obstacle_n_group[] contiene le posizioni dei 3 ostacoli che vengono disegnati nell'ambiente
         self.all_obstacle_n_group = []
         self.all_obstacle_n_group.append(obstacle1_n)
         self.all_obstacle_n_group.append(obstacle2_n)
         self.all_obstacle_n_group.append(obstacle3_n)
         
-        self.boundary = [pointA, pointB, pointD, pointC]
+        #Inizializzo l'oggetto cell_decomposizion con il quale sarà possibile suddividere l'ambiente in celle
         self.cell_decomposition = CellDecomposition(self.all_obstacle_n_group, 10)
+        #Grazie ai metodi dell'oggetto cell_decomposition ottengo in output: 
+        # le posizioni (x1,y1,x2,y2) delle line verticali che compongono le celle, 
+        # le posizioni (x,y,width, height) per poter disegnare i vertici del grafo, 
+        # le posizioni (x1,y1,x2,y2) per poter disegnare gli archi del grafo, 
+        # il grafo sotto forma di lista di adiacenza ed infine la lista dei vertici del grafo
         self.vertical_lines, self.vertex, self.edges, self.graph, self.graph_vertices = self.cell_decomposition.find_vertical_lines_vertex_and_edges()
+        
+        #Inizializzo una lista che contiene i vertici del grafo esclusi quelli dove potrebbero trovarsi i blocchi
         self.graph_vertices_without_fixed_pos = self.graph_vertices[:29]
         
     def set_from(self, _from):
         self._from = _from
         
     def go(self):
-        #Prendo la velocità dal Distance Control
+        
+        #Passo in input al Distance Control la posa del robot e la converte in una velocità target,
+        #riesce a fare questo perchè il metodo evaluate() contiene anche il blocco Cartesian to Polar,
+        #questo significa che converte la posa in coordinate polari utilizzando la distanza euclidea e l'algoritmo dell'headingTo
         v_target = self.linear_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose(), True)
+        
+        #Passo al rotation control la theta target calcolata precedentemente
         self.angular_speed_profile_controller.set_target(self.linear_speed_profile_controller.target_heading)
         
-        #Prendo la velocità angolare dal Rotation Control
+        #Passo in input al Rotation Control la theta corrente ed ottengo in output la velocità angolare target
         w_target = self.angular_speed_profile_controller.evaluate(self.delta_t, self.robot_two_wheels.get_pose()[2])
+        
+        #Tramite la velocità e la velocità angolare ottengo in output la velocità target su ruota destra e ruota sinistra
         (vl, vr) = self.robot_two_wheels.get_wheel_speed()
         vref_l = v_target - w_target * self.robot_two_wheels.encoder_wheelbase / 2.0
         vref_r = v_target + w_target * self.robot_two_wheels.encoder_wheelbase / 2.0
 
-        # same vref
+        #Confronto le velocità target e le velocità correnti e tramite i controllori proporzionali-integrali
+        # e li converto in coppie da applicare ai motori
         Tleft = self.left_controller.evaluate(vref_l-vl, self.delta_t)
         Tright = self.right_controller.evaluate(vref_r-vr, self.delta_t)
 
+        #Infine chiamo il metodo evaluate() del robot che aggiornerà la posa del robot
         self.robot_two_wheels.evaluate(self.delta_t, Tleft, Tright)
         
         self.t += self.delta_t
         self.update()
         
+    #Metodo per inizializzare la lista delle possibili posizioni dei dischi
     def initialize_block_position_list(self):
         for pos in BLOCK_POSITIONS[4:]:
             b = Block('white')
             b.set_pose(pos[0], pos[1], 0)
             self.possible_block_list.append(b)
             
+    #Metodo per poter generare 10 dischi colorati (Invocato dalla procedura PHIDIAS: gen_block())
     def generate_blocks(self):
         possible_positions = BLOCK_POSITIONS.copy()
         if self.world.count_blocks() == 10:
@@ -111,10 +138,10 @@ class MainWindow(QWidget):
             col = int(random.uniform(0, 3))
             self.world.new_block(COLOR_NAMES[col], block_position[0],block_position[1])
             
+    #Metodo per ottenere le coordinate X,Y per poter far avvicinare il robot al disco senza farlo salire su di esso
     def get_target_minus_robot(self, x_A, y_A, x_B, y_B):
         # Distanza desiderata
         distanza = 0.05
-        
         delta_x = x_B - x_A
         delta_y = y_B - y_A
 
@@ -130,6 +157,7 @@ class MainWindow(QWidget):
         y_C = y_B - distanza * unitario_y
         return x_C, y_C
             
+    #Metodo per rilevare il vertice più vicino al robot
     def get_vertex_nearest_to_robot_position(self):
         x_pos, y_pos, w_angle = self.robot_two_wheels.get_pose()
         x_pos = (Pose.x_center + x_pos * 1000)
@@ -143,6 +171,7 @@ class MainWindow(QWidget):
                 nearest_vertex = idx
         return nearest_vertex
             
+    #Metodo per poter scansionare le 20 possibili posizioni dei dischi (Invocato dalla procedura PHIDIAS: scan())
     def scan_nearest_position(self, destinations):
         if(destinations == []):
             return
@@ -172,11 +201,14 @@ class MainWindow(QWidget):
             self.notify_nearest_target_got(destination)
         return destination
     
+    #Metodo per notificare di aver raggiunto il target
     def notify_nearest_target_got(self, destination):
         self.notification = True
         if self._from is not None:
             Messaging.send_belief(self._from, 'nearest_target_reached', [destination], 'robot')
-            
+    
+    #Questo metodo prende in input una lista di destinazioni, trova quella più vicina
+    # e fa seguire al robot il percorso più veloce per raggiungerla
     def go_to_nearest_block(self, destinations):
         if(destinations == []):
             return
@@ -210,21 +242,25 @@ class MainWindow(QWidget):
                     self.notify_nearest_blue_picked(destination)
         return destination
     
+    #Metodo per notificare di aver preso un disco di colore rosso
     def notify_nearest_red_picked(self, red):
         self.notification = True
         if self._from is not None:
             Messaging.send_belief(self._from, 'nearest_red_picked', [red], 'robot')
-            
+    
+    #Metodo per notificare di aver preso un disco di colore verde
     def notify_nearest_green_picked(self, green):
         self.notification = True
         if self._from is not None:
             Messaging.send_belief(self._from, 'nearest_green_picked', [green], 'robot')
-            
+    
+    #Metodo per notificare di aver preso un disco di colore blu
     def notify_nearest_blue_picked(self, blue):
         self.notification = True
         if self._from is not None:
             Messaging.send_belief(self._from, 'nearest_blue_picked', [blue], 'robot')
-            
+    
+    #Metodo per impostare come target al robot il raggiungimento di uno specifico bucket
     def go_to_bucket(self, dest):
         source = self.get_vertex_nearest_to_robot_position()
         path, destination = find_path_to_nearest_block(self.graph, self.graph_vertices, source, [28 + dest])
@@ -243,7 +279,6 @@ class MainWindow(QWidget):
                     x, y, w = self.robot_two_wheels.get_pose()
                     error_x = abs(x - x_c)
                     error_y = abs(y - y_c)
-            #Draw Block
             if dest == 1: #Red
                 x_red = random.uniform(1.08, 1.12)
                 y_red = random.uniform(0.02, 0.04)
@@ -258,6 +293,7 @@ class MainWindow(QWidget):
                 self.world.new_block_on_bucket(COLOR_NAMES[2], x_blue,y_blue)
             self.notify_bucket_got()
             
+    #Metodo per riportare il robot alla sua posizione iniziale
     def go_to_start(self):
         source = self.get_vertex_nearest_to_robot_position()
         path, destination = find_path_to_nearest_block(self.graph, self.graph_vertices, source, [28])
@@ -277,6 +313,7 @@ class MainWindow(QWidget):
                     error_x = abs(x - x_c)
                     error_y = abs(y - y_c)
     
+    #Metodo che simula l'azione di un sensore, permette di far capire al robot il colore di un disco
     def sense_color(self, destination):
         if self._from is not None:
             d = self.world.sense_color()
@@ -286,11 +323,13 @@ class MainWindow(QWidget):
                 params = [destination, d]
             Messaging.send_belief(self._from, 'color', params, 'robot')
             
+    #Metodo per notificare di aver raggiunto il bucket
     def notify_bucket_got(self):
         self.notification = True
         if self._from is not None:
             Messaging.send_belief(self._from, 'bucket_reached', [], 'robot')
         
+    #Metodo per disegnare i bucket
     def paint_block_bucket(self, qp):
         #Red Bucket
         qp.setPen(QPen(Qt.red, 3)) # type: ignore
@@ -313,23 +352,27 @@ class MainWindow(QWidget):
         qp.drawLine(pointB[0]-80, pointB[1], pointB[0]-80, pointB[1]+80)
         qp.drawLine(pointB[0], pointB[1], pointB[0], pointB[1]+80)
         
+    #Metodo per disegnare le possibili posizioni in cui può trovarsi un disco
     def paint_block_possible_pos(self, qp):
         for b in self.possible_block_list:
             b.paint_position(qp)
             
+    #Metodo per disegnare le celle di suddivisione dell'ambiente
     def paint_fixed_cell_lines(self, qp):
         qp.setPen(Qt.black) # type: ignore
         
         for line in self.vertical_lines:
             qp.drawLine(line[0], line[1], line[2], line[3])
-            
+    
+    #Metodo per disegnare il grafo su cui il robot andrà a muoversi
     def paint_fixed_cell_graph(self, qp):
         for vrt in self.vertex:
             qp.drawEllipse(vrt[0], vrt[1], vrt[2], vrt[3])
             
         for edge in self.edges:
             qp.drawLine(edge[0], edge[1], edge[2], edge[3])
-        
+    
+    #Metodo per disegnare tutto ciò che vediamo in esecuzione
     def paintEvent(self, event):
         qp = QtGui.QPainter()
         qp.begin(self)
@@ -350,7 +393,7 @@ class MainWindow(QWidget):
         
         self.paint_block_bucket(qp)
         
-        #Optional Draw
+        #Questi metodi possiamo anche non utilizzarli (al momento vengono utilizzati per capire meglio come è stato strutturato l'ambiente)
         self.paint_block_possible_pos(qp)
         self.paint_fixed_cell_lines(qp)
         self.paint_fixed_cell_graph(qp)

@@ -1,5 +1,7 @@
 import heapq
 
+#Questo metodo prende in input il vertice di partenza e una lista di possibili destinazioni
+# per prima cosa trova la destinazione più vicina ed infine restituisce il percorso più veloce per raggiungerla
 def find_path_to_nearest_block(adjacency_list, vertices_positions, source, destinations):
 
     def shortest_path(adjacency_list, vertices_positions, source_vertex, destination_vertices):

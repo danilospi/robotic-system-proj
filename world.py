@@ -18,7 +18,7 @@ class World:
     
     def sense_color(self):
         (x_pos, y_pos, w) = self.ui.robot_two_wheels.get_pose()
-        min_dist = 0.077
+        min_dist = 0.078
         nearest_color = "None"
         for b in self.__blocks:
             (xb, yb, ab) = b.get_pose()

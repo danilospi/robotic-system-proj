@@ -1,5 +1,8 @@
-from point import *
 import math
+
+from point import point
+
+#Qui sono presenti diversi metodo che vengono sfruttati dall'algoritmo di cell decomposition
 
 def normalize_angle(a):
     while a > math.pi:
@@ -21,7 +24,6 @@ def segment_intersection(a, b, c, d):
 		return -1
 
 def intersect(A,B,C,D):
-	# Check if any three points are co-linear
     if(((A.x * (B.y - C.y)) + (B.x * (C.y - A.y)) + (C.x * (A.y - B.y)))== 0):
         return True
     if(((A.x * (B.y - D.y)) + (B.x * (D.y - A.y)) + (D.x * (A.y - B.y)))== 0):
@@ -44,7 +46,6 @@ def line_intersection(segment1, segment2):
 
 	div = determinant(x_diff, y_diff)
 	if div == 0:
-		#parallel lines
 		return -1
 
 	d = ( determinant(line1[0] , line1[1]) , determinant(line2[0], line2[1]))
@@ -57,7 +58,7 @@ def line_intersection(segment1, segment2):
 def centroid(vertices):
 	n = len(vertices)
 	if( n==0 ):
-		return -1;	
+		return -1
 	sum_x = 0
 	sum_y = 0
 	for i in vertices:
@@ -69,7 +70,6 @@ def centroid(vertices):
 	return point(centr_x, centr_y)
 
 def polygon_area(vertices, number_of_vertices):
-	# Expects closed polygon
 	n = number_of_vertices
 	if(n %2 !=0 ):
 		vertices.append(vertices[0])
@@ -79,9 +79,9 @@ def polygon_area(vertices, number_of_vertices):
 	return int(area/2)
 
 def check_obstruction(obstacles, segment):
-	res = True; break_out = False;
+	res = True
+	break_out = False
 	for obs in obstacles:
-		# Add the last line to make closed polygon
 		n = len(obs)-1
 		if ( obs[n].equals(obs[0]) is False):
 			obs.append(obs[0])
@@ -89,7 +89,7 @@ def check_obstruction(obstacles, segment):
 			if (segment_intersection( segment[0], segment[1],  obs[index],  obs[index+1]) != -1):
 				res = False
 				break_out = True
-				break;	
+				break
 		if(break_out is True):
 			break
 	return res
