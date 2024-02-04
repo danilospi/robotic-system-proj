@@ -85,7 +85,7 @@ I 3 grafici sono:
 ![position-plot](/img/position_plot.png)
 <p style="text-align: center;">[Figura 3.2.3]: Posizione Del Robot</p>
 
-Per poter ottenere questi risultati sono stati scelti, per le 2 ruote, 2 controllori di tipo proporzionale integrale con saturazione. I valori scelti per le variabili sono: kp = 3.1, ki = 0.0
+Per poter ottenere questi risultati sono stati scelti, per le 2 ruote, 2 controllori di tipo proporzionale integrale con saturazione. I valori scelti per le variabili sono: kp = 18.0, ki = 2.0
 
 ## Eseguire il punto 2
 
